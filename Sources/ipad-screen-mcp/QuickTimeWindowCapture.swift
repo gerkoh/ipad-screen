@@ -1,4 +1,3 @@
-import AppKit
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -11,9 +10,33 @@ struct CaptureFailure: Error {
 }
 
 enum QuickTimeWindowCapture {
+    static let timeout: TimeInterval = 10
     static let jpegQuality = 0.85
 
-    static func jpeg() async throws -> Data {
+    /// Blocks the calling (stdin) thread until the capture finishes or times out.
+    static func captureNow() -> CaptureOutcome {
+        let result = OutcomeBox()
+        let finished = DispatchSemaphore(value: 0)
+        Task.detached {
+            result.set(await outcome())
+            finished.signal()
+        }
+        guard finished.wait(timeout: .now() + timeout) == .success, let outcome = result.get()
+        else { return .unavailable(CaptureMessage.timedOut) }
+        return outcome
+    }
+
+    private static func outcome() async -> CaptureOutcome {
+        do {
+            return try await .image(jpeg: jpeg())
+        } catch let failure as CaptureFailure {
+            return .unavailable(failure.message)
+        } catch {
+            return .unavailable(CaptureMessage.captureFailed(error.localizedDescription))
+        }
+    }
+
+    private static func jpeg() async throws -> Data {
         guard CGPreflightScreenCaptureAccess() else {
             // Shows the system prompt the first time; the grant applies from the next launch.
             _ = CGRequestScreenCaptureAccess()
@@ -38,7 +61,7 @@ enum QuickTimeWindowCapture {
         else { throw CaptureFailure(message: CaptureMessage.noQuickTimeWindow) }
 
         // A single-window filter captures the window's own pixels even when other
-        // windows (Claude, say) cover it.
+        // windows (Claude, say) cover it, and nothing else on screen.
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let size = CaptureSize.pixels(
             width: window.frame.width,
@@ -75,37 +98,16 @@ enum QuickTimeWindowCapture {
     }
 }
 
-@main
-enum CaptureApp {
-    static let watchdog: TimeInterval = 15
+/// @unchecked Sendable: every access goes through `lock`.
+private final class OutcomeBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var outcome: CaptureOutcome?
 
-    static func main() async {
-        guard let path = CaptureHandoff.outputPath(in: CommandLine.arguments) else {
-            exit(EX_USAGE)
-        }
-        let output = URL(fileURLWithPath: path)
-        let errorFile = CaptureHandoff.errorURL(for: output)
+    func set(_ value: CaptureOutcome) {
+        lock.withLock { outcome = value }
+    }
 
-        // Opens the window-server connection. Launched by `open` as a background-only app,
-        // nothing else does, and SCContentFilter then aborts inside SkyLight
-        // (SLSGetDisplaysWithRect assertion) instead of throwing.
-        await MainActor.run {
-            _ = NSApplication.shared.setActivationPolicy(.prohibited)
-        }
-
-        DispatchQueue.global().asyncAfter(deadline: .now() + watchdog) {
-            try? Data(CaptureMessage.timedOut.utf8).write(to: errorFile)
-            exit(EXIT_FAILURE)
-        }
-
-        do {
-            try await QuickTimeWindowCapture.jpeg().write(to: output, options: .atomic)
-            exit(EXIT_SUCCESS)
-        } catch {
-            let message = (error as? CaptureFailure)?.message
-                ?? CaptureMessage.captureFailed(error.localizedDescription)
-            try? Data(message.utf8).write(to: errorFile)
-            exit(EXIT_FAILURE)
-        }
+    func get() -> CaptureOutcome? {
+        lock.withLock { outcome }
     }
 }

@@ -1,34 +1,26 @@
 #!/usr/bin/env bash
-# Builds build/ipad-screen-mcp and build/iPadScreenCapture.app side by side (the MCP
-# server finds the app next to itself) and signs both.
+# Builds build/iPadScreen.app, whose main executable is the MCP server Claude runs.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-out="$root/build"
-app="$out/iPadScreenCapture.app"
-local_identity="iPadScreen Local Code Signing"
-if [ -n "${CODESIGN_IDENTITY:-}" ]; then
-    identity="$CODESIGN_IDENTITY"
-elif security find-certificate -c "$local_identity" >/dev/null 2>&1; then
-    identity="$local_identity"
-else
-    # Ad hoc works, but each build is a new app to macOS and loses Screen Recording.
-    echo "note: no '$local_identity' (just signing-identity); signing ad hoc" >&2
-    identity="-"
-fi
+app="$root/build/iPadScreen.app"
 
 swift build --package-path "$root" -c release
 bin="$(swift build --package-path "$root" -c release --show-bin-path)"
 
-rm -rf "$app" "$out/ipad-screen-mcp"
+rm -rf "$app"
 mkdir -p "$app/Contents/MacOS"
-cp "$bin/iPadScreenCapture" "$app/Contents/MacOS/iPadScreenCapture"
-cp "$root/Resources/iPadScreenCapture-Info.plist" "$app/Contents/Info.plist"
-cp "$bin/ipad-screen-mcp" "$out/ipad-screen-mcp"
+cp "$bin/ipad-screen-mcp" "$app/Contents/MacOS/ipad-screen-mcp"
+cp "$root/Resources/iPadScreen-Info.plist" "$app/Contents/Info.plist"
 
-codesign --force --options runtime --sign "$identity" "$app"
-codesign --force --options runtime --sign "$identity" "$out/ipad-screen-mcp"
+# Ad hoc: macOS pins the Screen Recording grant to this exact build, so a modified
+# binary never inherits it (the cost: allow it again after each rebuild).
+# Hardened Runtime: blocks DYLD_INSERT_LIBRARIES and unsigned libraries, so nothing can
+# be injected into the process that holds the grant.
+codesign --force --options runtime --sign - "$app"
 codesign --verify --strict "$app"
-codesign --verify --strict "$out/ipad-screen-mcp"
+signature="$(codesign --display --verbose "$app" 2>&1)"
+grep -Eq 'flags=0x[0-9a-f]+\([^)]*runtime' <<<"$signature" \
+    || { echo "error: Hardened Runtime missing from $app" >&2; exit 1; }
 
-echo "$out/ipad-screen-mcp"
+echo "$app/Contents/MacOS/ipad-screen-mcp"

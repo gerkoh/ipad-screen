@@ -1,7 +1,9 @@
+server := "build/iPadScreen.app/Contents/MacOS/ipad-screen-mcp"
+
 default:
     @just --list
 
-# Build the MCP server and the capture app into build/
+# Build build/iPadScreen.app (the MCP server)
 build:
     ./scripts/build.sh
 
@@ -9,21 +11,24 @@ build:
 test:
     swift test
 
-# Capture the QuickTime window once, the same way Claude does, and open the result
+# Send the server the same tools/call Claude does and open the image it returns.
+# Run from a terminal, this uses the terminal's Screen Recording permission.
 capture: build
     #!/usr/bin/env bash
     set -euo pipefail
     out="$(mktemp -d)/ipad.jpg"
-    open -n -g -W build/iPadScreenCapture.app --args --out "$out"
-    if [ -s "$out" ]; then open "$out"; else cat "$out.error"; echo; exit 1; fi
+    printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"view_ipad_screen"}}' \
+        | "{{server}}" \
+        | /usr/bin/python3 -c 'import base64, json, sys
+    item = json.loads(sys.stdin.readline())["result"]["content"][0]
+    if item["type"] != "image": sys.exit(item["text"])
+    open(sys.argv[1], "wb").write(base64.b64decode(item["data"]))' "$out"
+    open "$out"
 
-# Create the local signing identity that keeps Screen Recording across rebuilds (once)
-signing-identity:
-    ./scripts/create-signing-identity.sh
-
-# Build, then register the MCP server with Claude Desktop (backs up its config first)
-install-claude: build
-    ./scripts/install-claude.sh
+# Build build/iPadScreen.mcpb and open it in Claude Desktop to install or update it
+extension: build
+    ./scripts/package-extension.sh
+    open build/iPadScreen.mcpb
 
 # Link skills/ipad-explain into Claude Code's skills folder (/ipad-explain)
 install-skill:
@@ -39,9 +44,9 @@ install-skill:
 
 # Zip the skill for Claude Desktop: Settings › Skills › upload build/ipad-explain.zip
 skill-zip:
-    mkdir -p build
-    rm -f build/ipad-explain.zip
-    cd skills && zip -rq ../build/ipad-explain.zip ipad-explain -x '*.DS_Store'
+    @mkdir -p build
+    @rm -f build/ipad-explain.zip
+    @cd skills && zip -rq ../build/ipad-explain.zip ipad-explain -x '*.DS_Store'
     @echo "build/ipad-explain.zip"
 
 clean:

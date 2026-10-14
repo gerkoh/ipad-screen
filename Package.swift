@@ -8,15 +8,10 @@ let package = Package(
         // Pure logic: the MCP protocol, window choice and capture sizing. No I/O, so
         // it's unit-tested without a screen, an iPad or Claude.
         .target(name: "iPadScreenCore"),
-        // The stdio MCP server Claude launches. Holds no permissions of its own.
+        // The stdio MCP server Claude launches; bundled as iPadScreen.app so macOS shows
+        // a named app for the Screen Recording grant.
         .executableTarget(
             name: "ipad-screen-mcp",
-            dependencies: ["iPadScreenCore"]
-        ),
-        // Bundled as iPadScreenCapture.app so the Screen Recording grant belongs to it,
-        // not to Claude (see README "Why a separate capture app").
-        .executableTarget(
-            name: "iPadScreenCapture",
             dependencies: ["iPadScreenCore"]
         ),
         .testTarget(

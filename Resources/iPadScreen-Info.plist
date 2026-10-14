@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>iPadScreenCapture</string>
+	<string>iPadScreen</string>
 	<key>CFBundleExecutable</key>
-	<string>iPadScreenCapture</string>
+	<string>ipad-screen-mcp</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.geraldkoh.ipadscreen.capture</string>
+	<string>com.geraldkoh.ipadscreen</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>iPadScreenCapture</string>
+	<string>iPadScreen</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
