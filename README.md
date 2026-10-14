@@ -1,106 +1,131 @@
 # iPadScreen
 
-Lets Claude Desktop see your iPad screen. QuickTime Player mirrors the iPad to the Mac;
-a local MCP server gives Claude one tool, `view_ipad_screen`, that snapshots that
-QuickTime window. Ask "check my working" in Claude and it looks at the page you're on.
+Let Claude Desktop see your iPad screen. Write in GoodNotes (or anything else) on the
+iPad, ask Claude "check my working", and it looks at the page you're on before it
+answers.
 
-Everything runs on this Mac. Nothing listens on the network, nothing is written to
-disk, and the only place the image goes is the Claude conversation you asked in.
+It runs only on your Mac: nothing goes over the network, nothing is saved to disk, and
+the picture only goes into the Claude chat you asked in.
 
-## Setup
+## 1. Connect the iPad to the Mac (each session)
 
-```bash
-just test        # unit tests
-just extension   # build iPadScreen.mcpb and open it in Claude Desktop
-```
+1. Plug the iPad into the Mac with a cable and unlock it. The first time, tap **Trust**
+   on the iPad when it asks about this computer.
+2. Open **QuickTime Player** and choose **File › New Movie Recording**.
+   (Not *New Screen Recording*; that records the Mac's own screen.)
+3. Click the **⌄** next to the red record button and pick your **iPad** under Camera.
+   The QuickTime window now shows your iPad's screen.
+4. Leave that window open. You don't need to press record. It can sit behind other
+   windows, but don't minimise it.
 
-Then:
+## 2. Set up Claude (once)
 
-1. Click **Install** in Claude's dialog. It appears as **iPad Screen** under
-   Settings › Extensions.
-2. Open QuickTime Player › File › New Movie Recording, click the ⌄ next to the record
-   button and pick your iPad. You don't need to record.
-3. Ask Claude something about your iPad. The first time, macOS asks to let **iPadScreen**
-   record the screen: allow it in System Settings › Privacy & Security › Screen & System
-   Audio Recording, then switch the extension off and on.
+You need macOS 14 or later, [Claude Desktop](https://claude.ai/download), Swift 6
+(Xcode or the Command Line Tools) and [`just`](https://github.com/casey/just)
+(`brew install just`).
 
-### Updating
+1. In this folder, run:
 
-Bump `version` in `Resources/manifest.json` (the only place it lives; the build copies
-it into the app), then `just extension` and accept Claude's update. Claude ignores a
-package whose version isn't higher than the installed one. Each new build needs Screen
-Recording allowed again (see Security).
+   ```bash
+   just extension
+   ```
 
-### Turning it on and off
+   This builds the extension and opens it in Claude Desktop. Click **Install**. It shows
+   up as **iPad Screen** in Claude › Settings › Extensions.
+2. Ask Claude anything about your iPad (see below). The first time, macOS asks to let
+   **iPadScreen** record the screen. Allow it in **System Settings › Privacy &
+   Security › Screen & System Audio Recording**, then in Claude go to Settings ›
+   Extensions › iPad Screen and switch it off and on again.
+3. Optional, the tutoring skill:
+   - **Claude Desktop:** run `just skill-zip`, then upload `build/ipad-explain.zip` in
+     Claude › Settings › Skills.
+   - **Claude Code:** run `just install-skill`.
 
-Settings › Extensions › **iPad Screen** has a switch. On starts the server; off stops
-it, so nothing of it runs and Claude can't call the tool. Leave it off when you're not
-studying and flip it on when you are; no restart needed.
+## 3. Use it
 
-## The `/ipad-explain` skill
+With the QuickTime window showing your iPad, ask Claude things like:
 
-`skills/ipad-explain/SKILL.md` turns Claude into a tutor for what's on your page: it
-looks at the iPad first, works out what you're stuck on, and explains step by step using
-your own notation, giving hints before full answers.
+- "Look at my iPad. Is my working right?"
+- "What's wrong with the step I just wrote?"
+- "Explain the equation at the bottom of my page."
+- `/ipad-explain` (with the skill installed): Claude reads your page, works out what
+  you're stuck on and explains step by step, giving hints before full answers.
 
-- **Claude Code:** `just install-skill` links it into `~/.claude/skills`, so edits here
-  take effect straight away. Type `/ipad-explain`.
-- **Claude Desktop:** `just skill-zip`, then upload `build/ipad-explain.zip` under
-  Settings › Skills. Re-upload after editing.
+Claude takes a fresh look every time you ask, so keep writing and ask again.
+
+**Turning it off:** Claude › Settings › Extensions › iPad Screen › **Configure** (or
+**⋯**) has the switch. Off means the server isn't running and Claude can't look. It
+also stops whenever Claude quits.
+
+### If something's not right
+
+| Claude says or shows | Fix |
+|---|---|
+| "No QuickTime Player window is showing the iPad" | Do step 1 again; the window can be covered but not minimised. |
+| "The QuickTime window is showing only black" | Unlock the iPad, check the cable; if QuickTime lost it, re-pick the iPad under ⌄. |
+| "iPadScreen doesn't have Screen Recording permission" | Allow it as in step 2.2, then switch the extension off and on. |
+| QuickTime's record buttons cover part of the page | Move the pointer off the QuickTime window and ask again. |
+| Claude doesn't use the tool at all | Check iPad Screen is on in Settings › Extensions, or say "look at my iPad". |
+
+## Updating
+
+After changing the code, bump `version` in `Resources/manifest.json` (the only place
+it's set) and run `just extension` again, then accept Claude's update. Claude ignores a
+package whose version isn't higher than the one installed. macOS will ask for Screen
+Recording again, because every build counts as a new app (see Security).
 
 ## How it works
 
-`iPadScreen.app` is a background-only app whose executable is the MCP server; the
-`.mcpb` is a zip of it plus `Resources/manifest.json`. While the extension is on, Claude
-runs it and talks to it over stdin/stdout (JSON-RPC); it exits as soon as Claude closes
-that pipe. While idle it waits on stdin: about 5 MB of memory and no CPU, no timers, no
-network.
+The extension is `iPadScreen.app`, a background-only app with no window or Dock icon,
+whose program is a local [MCP](https://modelcontextprotocol.io) server. While the
+extension is on, Claude runs it and talks to it through a pipe (stdin/stdout). It has
+one read-only tool, `view_ipad_screen`.
 
-On each `view_ipad_screen` call it uses ScreenCaptureKit to capture the largest visible
-QuickTime Player window, even when other windows cover it, scaled to at most 1568 px on
-the long edge (Claude's useful limit), and returns it as a JPEG in the reply. A capture
-takes about 60 ms (the first after start about 200 ms) and is roughly 210 KB.
+Each time Claude calls the tool, the server takes a snapshot of the largest visible
+QuickTime Player window with ScreenCaptureKit, even if other windows cover it. It
+scales it to at most 1568 px on the long edge (larger only costs Claude more tokens)
+and sends it back as a JPEG. A snapshot takes about 60 ms (about 200 ms for the first)
+and is about 200 KB. If the picture is almost entirely black, it sends a message
+instead of the image.
 
-If QuickTime isn't showing the iPad, or shows only black (iPad locked, asleep or
-unplugged), the tool returns a short message saying so instead of a picture, and Claude
-passes it on. The server keeps running; the next call works once the iPad is back.
+Between calls it just waits: no CPU, no timers, no network, about 20 MB of memory. It
+exits as soon as Claude closes the pipe, including if Claude crashes, and nothing else
+ever starts it.
 
 ## Security
 
 - **One permission: Screen Recording**, which macOS requires to read another app's
-  window. No camera, microphone, accessibility, network or file access is used.
-- **Held by iPadScreen alone.** Claude Desktop launches MCP servers as their own
-  responsible process, so they never borrow Claude's permissions; iPadScreen needs its
-  own grant, and it only ever captures the QuickTime window.
-- **Signed ad hoc, deliberately.** macOS pins the grant to this exact build, so a
-  modified binary never inherits it. The cost is allowing it again after each rebuild.
-- **Hardened Runtime** is on (the build fails without it), so no library can be
-  injected into the process holding the grant.
-- **What it can't stop:** any program already running as you could start the server and
-  ask for a snapshot of the QuickTime window, as with any app you grant this permission
-  to. It can't see anything else on screen.
+  window. It only ever captures the QuickTime window. No camera, microphone,
+  accessibility, network or file access.
+- **The permission is iPadScreen's alone.** Claude starts extensions as separate apps,
+  so they never borrow Claude's own permissions.
+- **Signed ad hoc, on purpose.** macOS ties the permission to this exact build, so a
+  modified copy gets nothing. The cost is allowing it again after each update.
+- **Hardened Runtime is on** (the build fails without it), so no code can be injected
+  into the app that holds the permission.
+- **What it can't prevent:** a program already running as you could start the server
+  and ask for a snapshot of the QuickTime window, as with any app you give this
+  permission to. It can't see anything else on your screen.
 
-## Things to know
+## Development
 
-- **QuickTime's record controls** appear over the picture while the pointer is on the
-  window; move the pointer off it to keep them out of the snapshot.
-- **One QuickTime window** at a time is the intended setup; with several, the largest
-  visible one is used. A minimised window can't be captured.
-- **macOS may re-confirm** the Screen Recording grant every so often; that's the system.
-- `just capture` runs one capture from the terminal and opens it. Run that way it uses
-  the terminal's Screen Recording permission, not iPadScreen's.
-
-## Layout
+| Command | Does |
+|---|---|
+| `just test` | Run the unit tests |
+| `just build` | Build and sign `build/iPadScreen.app` |
+| `just extension` | Build, pack `build/iPadScreen.mcpb` and open it in Claude |
+| `just capture` | Take one snapshot from the terminal and open it (uses the terminal's Screen Recording permission) |
+| `just skill-zip` / `just install-skill` | Package or link the `/ipad-explain` skill |
 
 | Path | What |
 |---|---|
 | `Sources/iPadScreenCore` | MCP protocol, window choice, sizing, black-frame check, messages |
-| `Sources/ipad-screen-mcp` | The server: stdio loop and the ScreenCaptureKit capture |
-| `Tests/iPadScreenCoreTests` | Unit tests for the core |
-| `scripts/build.sh` | Builds and signs `build/iPadScreen.app` |
-| `scripts/package-extension.sh` | Packs it into `build/iPadScreen.mcpb` |
-| `Resources/manifest.json` | The Claude Desktop Extension manifest |
-| `skills/ipad-explain` | The tutoring skill (`/ipad-explain`) |
+| `Sources/ipad-screen-mcp` | The server: the pipe loop and the ScreenCaptureKit capture |
+| `Tests/iPadScreenCoreTests` | Unit tests |
+| `Resources/manifest.json` | Extension manifest; the version lives here |
+| `Resources/iPadScreen-Info.plist` | The app bundle's Info.plist |
+| `scripts/build.sh`, `scripts/package-extension.sh` | Build and packaging |
+| `skills/ipad-explain` | The tutoring skill |
 
 ## Licence
 
