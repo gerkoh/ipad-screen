@@ -4,6 +4,7 @@ import XCTest
 
 final class MCPServerTests: XCTestCase {
     private let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x01, 0x02])
+    private let version = "9.8.7"
 
     // ── Lifecycle ──
 
@@ -13,6 +14,7 @@ final class MCPServerTests: XCTestCase {
         XCTAssertEqual(reply["result"]?["protocolVersion"], .string("2025-03-26"))
         XCTAssertEqual(reply["result"]?["capabilities"]?["tools"], .object([:]))
         XCTAssertEqual(reply["result"]?["serverInfo"]?["name"], .string(MCPServer.serverName))
+        XCTAssertEqual(reply["result"]?["serverInfo"]?["version"], .string(version))
         XCTAssertNotNil(reply["result"]?["instructions"]?.stringValue)
     }
 
@@ -33,7 +35,7 @@ final class MCPServerTests: XCTestCase {
     }
 
     func testNotificationsGetNoReply() {
-        let server = MCPServer { XCTFail("no capture expected"); return .unavailable("") }
+        let server = MCPServer(version: version) { XCTFail("no capture expected"); return .unavailable("") }
         XCTAssertNil(server.handle(line: #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#))
         XCTAssertNil(server.handle(line: #"{"jsonrpc":"2.0","method":"tools/call","params":{"name":"view_ipad_screen"}}"#))
     }
@@ -83,7 +85,7 @@ final class MCPServerTests: XCTestCase {
 
     func testToolCallCapturesFreshEachTime() throws {
         var captures = 0
-        let server = MCPServer { captures += 1; return .image(jpeg: self.jpeg) }
+        let server = MCPServer(version: version) { captures += 1; return .image(jpeg: self.jpeg) }
         let call = #"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"view_ipad_screen"}}"#
         _ = server.handle(line: call)
         _ = server.handle(line: call)
@@ -92,7 +94,7 @@ final class MCPServerTests: XCTestCase {
 
     func testUnknownToolIsAnInvalidParamsErrorWithoutCapturing() throws {
         var captured = false
-        let server = MCPServer { captured = true; return .image(jpeg: self.jpeg) }
+        let server = MCPServer(version: version) { captured = true; return .image(jpeg: self.jpeg) }
         let reply = try decode(XCTUnwrap(server.handle(
             line: #"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"rm_rf"}}"#
         )))
@@ -133,7 +135,7 @@ final class MCPServerTests: XCTestCase {
     // ── Wire format ──
 
     func testRepliesAreSingleLineAndKeepIntegerIDsIntegral() throws {
-        let server = MCPServer { .image(jpeg: Data(repeating: 0xAB, count: 4096)) }
+        let server = MCPServer(version: version) { .image(jpeg: Data(repeating: 0xAB, count: 4096)) }
         let line = try XCTUnwrap(server.handle(
             line: #"{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"view_ipad_screen"}}"#
         ))
@@ -145,7 +147,7 @@ final class MCPServerTests: XCTestCase {
     // ── Helpers ──
 
     private func send(_ line: String, capture: CaptureOutcome = .unavailable("unused")) throws -> JSONValue {
-        let server = MCPServer { capture }
+        let server = MCPServer(version: version) { capture }
         return try decode(XCTUnwrap(server.handle(line: line)))
     }
 

@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "ipad-screen",
   "display_name": "iPad Screen",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lets Claude see your iPad screen, mirrored to this Mac in QuickTime Player.",
   "long_description": "Adds one read-only tool, `view_ipad_screen`, that snapshots the QuickTime Player window showing your iPad (File › New Movie Recording, iPad as the camera). Runs only on this Mac: no network access, nothing written to disk. Needs Screen Recording permission for iPadScreen.",
   "author": {

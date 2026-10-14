@@ -12,6 +12,11 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS"
 cp "$bin/ipad-screen-mcp" "$app/Contents/MacOS/ipad-screen-mcp"
 cp "$root/Resources/iPadScreen-Info.plist" "$app/Contents/Info.plist"
+# manifest.json is the one place the version lives; Claude only installs an update
+# whose version is higher than the installed one.
+version="$(/usr/bin/plutil -extract version raw "$root/Resources/manifest.json")"
+/usr/bin/plutil -replace CFBundleShortVersionString -string "$version" "$app/Contents/Info.plist"
+/usr/bin/plutil -replace CFBundleVersion -string "$version" "$app/Contents/Info.plist"
 
 # Ad hoc: macOS pins the Screen Recording grant to this exact build, so a modified
 # binary never inherits it (the cost: allow it again after each rebuild).

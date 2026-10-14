@@ -24,6 +24,13 @@ Then:
    record the screen: allow it in System Settings › Privacy & Security › Screen & System
    Audio Recording, then switch the extension off and on.
 
+### Updating
+
+Bump `version` in `Resources/manifest.json` (the only place it lives; the build copies
+it into the app), then `just extension` and accept Claude's update. Claude ignores a
+package whose version isn't higher than the installed one. Each new build needs Screen
+Recording allowed again (see Security).
+
 ### Turning it on and off
 
 Settings › Extensions › **iPad Screen** has a switch. On starts the server; off stops

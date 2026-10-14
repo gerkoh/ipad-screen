@@ -11,7 +11,6 @@ public enum CaptureOutcome: Equatable, Sendable {
 /// https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio
 public struct MCPServer {
     public static let serverName = "ipad-screen"
-    public static let serverVersion = "1.0.0"
     public static let toolName = "view_ipad_screen"
     /// Newest first; the first is offered when a client asks for one we don't know.
     static let supportedProtocolVersions = ["2025-06-18", "2025-03-26", "2024-11-05"]
@@ -23,9 +22,12 @@ public struct MCPServer {
         static let invalidParams = -32602
     }
 
+    private let version: String
     private let capture: () -> CaptureOutcome
 
-    public init(capture: @escaping () -> CaptureOutcome) {
+    /// `version` comes from the app bundle, which the build stamps from manifest.json.
+    public init(version: String, capture: @escaping () -> CaptureOutcome) {
+        self.version = version
         self.capture = capture
     }
 
@@ -68,15 +70,15 @@ public struct MCPServer {
     }
 
     private func initializeResult(requested: JSONValue?) -> JSONValue {
-        let version = requested?.stringValue
+        let protocolVersion = requested?.stringValue
             .flatMap { Self.supportedProtocolVersions.contains($0) ? $0 : nil }
             ?? Self.supportedProtocolVersions[0]
         return .object([
-            "protocolVersion": .string(version),
+            "protocolVersion": .string(protocolVersion),
             "capabilities": .object(["tools": .object([:])]),
             "serverInfo": .object([
                 "name": .string(Self.serverName),
-                "version": .string(Self.serverVersion),
+                "version": .string(version),
             ]),
             "instructions": .string(Self.instructions),
         ])
