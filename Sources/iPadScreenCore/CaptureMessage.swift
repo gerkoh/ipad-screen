@@ -10,6 +10,10 @@ public enum CaptureMessage {
     in System Settings › Privacy & Security › Screen & System Audio Recording, then \
     restart Claude Desktop.
     """
+    public static let blankScreen = """
+    The QuickTime window is showing only black, so the iPad is probably locked, asleep \
+    or unplugged. Ask the user to unlock their iPad and check the cable, then look again.
+    """
     public static let timedOut = "Capturing the iPad screen timed out. Ask the user to try again."
 
     public static func captureFailed(_ detail: String) -> String {

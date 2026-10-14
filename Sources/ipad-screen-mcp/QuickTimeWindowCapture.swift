@@ -77,6 +77,9 @@ enum QuickTimeWindowCapture {
             contentFilter: filter,
             configuration: configuration
         )
+        if BlankFrame.isBlank(image) {
+            throw CaptureFailure(message: CaptureMessage.blankScreen)
+        }
         return try encodeJPEG(image)
     }
 

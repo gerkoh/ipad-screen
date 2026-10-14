@@ -54,6 +54,10 @@ QuickTime Player window, even when other windows cover it, scaled to at most 156
 the long edge (Claude's useful limit), and returns it as a JPEG in the reply. A capture
 takes about 60 ms (the first after start about 200 ms) and is roughly 210 KB.
 
+If QuickTime isn't showing the iPad, or shows only black (iPad locked, asleep or
+unplugged), the tool returns a short message saying so instead of a picture, and Claude
+passes it on. The server keeps running; the next call works once the iPad is back.
+
 ## Security
 
 - **One permission: Screen Recording**, which macOS requires to read another app's
@@ -83,7 +87,7 @@ takes about 60 ms (the first after start about 200 ms) and is roughly 210 KB.
 
 | Path | What |
 |---|---|
-| `Sources/iPadScreenCore` | Pure logic: MCP protocol, window choice, sizing, messages |
+| `Sources/iPadScreenCore` | MCP protocol, window choice, sizing, black-frame check, messages |
 | `Sources/ipad-screen-mcp` | The server: stdio loop and the ScreenCaptureKit capture |
 | `Tests/iPadScreenCoreTests` | Unit tests for the core |
 | `scripts/build.sh` | Builds and signs `build/iPadScreen.app` |
