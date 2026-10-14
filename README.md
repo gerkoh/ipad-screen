@@ -7,6 +7,22 @@ answers.
 It runs only on your Mac: nothing goes over the network, nothing is saved to disk, and
 the picture only goes into the Claude chat you asked in.
 
+## Example
+
+Sketch the problem on the iPad, then ask in Claude:
+
+> how do i get from human to goal, with q learning?
+
+<p align="center">
+  <img src="docs/example-gridworld.png" alt="A hand-drawn 3×3 grid world in GoodNotes: a stick figure in the top-left cell, a hole in the bottom-middle cell and the goal in the bottom-right cell" width="600">
+</p>
+
+The question alone doesn't say which grid, where the hole is or where you start. Claude
+looks at your page (this is the snapshot it gets), sees the 3×3 grid with you at the top
+left, the hole at the bottom middle and the goal at the bottom right, and explains
+Q-learning on *that* grid: the states and actions, the rewards for the goal and the
+hole, how the Q-values get updated, and which path they end up favouring.
+
 ## 1. Connect the iPad to the Mac (each session)
 
 1. Plug the iPad into the Mac with a cable and unlock it. The first time, tap **Trust**
