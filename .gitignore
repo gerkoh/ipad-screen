@@ -1,0 +1,25 @@
+# SwiftPM and build output (signed binaries are machine-specific)
+.build/
+build/
+.swiftpm/
+Package.resolved
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+
+# Signing material: never commit keys or certificates
+*.p12
+*.pem
+*.key
+*.cer
+*.mobileprovision
+
+# Temporary files
+*.tmp
+
+# Local config and secrets
+.env
+.env.*
+
+# macOS
+.DS_Store
