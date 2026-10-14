@@ -82,5 +82,9 @@ app in macOS's eyes, so only it holds the grant, and it only ever captures Quick
 | `Sources/iPadScreenCapture` | The capture app (ScreenCaptureKit) |
 | `Tests/iPadScreenCoreTests` | Unit tests for the core |
 | `skills/ipad-explain` | The tutoring skill (`/ipad-explain`) |
+
+## Licence
+
+[MIT](LICENSE)
 | `scripts/build.sh` | Builds and signs both into `build/` |
 | `scripts/install-claude.sh` | Adds the server to Claude Desktop's config (with a backup) |
